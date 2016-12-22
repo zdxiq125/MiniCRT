@@ -22,20 +22,42 @@ void free(void* ptr) {
     return;
 
   header->type = HEAP_BLOCK_FREE;
+  // merge prev block
   if(header->prev && header->prev->type == HEAP_BLOCK_FREE) {
-    //if(header->next && head->next->type == HEAP_BLOCK_USED)
     header->prev->next = header->next;
     header->prev->size += header->size;
     header->next->prev = header->prev;
     header = header->prev;
   }
-
+  // merge next block
   if(header->next && header->next->type == HEAP_BLOCK_FREE) {
-    header->next = header->next->next;
     header->size += header->next->size;
+    header->next = header->next->next;
   }
 }
-void* malloc( unsigned size ) { return NULL; }
+
+void* malloc( unsigned size ) {
+  void* ptr = NULL;
+  heap_header* walker = list_head;
+  while(walker) {
+    if(walker->size >= size) {
+      ptr = (void*)ADDR_ADD(walker, HEADER_SIZE);
+      walker->type = HEAP_BLOCK_USED;
+      // remain space management
+      heap_header* next = walker->next;
+      unsigned remain = walker->size - size;
+      if(remain > HEADER_SIZE) {
+        next = (*heap_header)ADDR_ADD(ptr, size);
+        *next = heap_header()
+      }
+      walker->next = next;
+      // end of management
+      return ptr;
+    }
+    walker = walker->next;
+  }
+  return ptr;
+}
 
 #ifndef WIN32
 static int brk(void* end_data_segment) {
