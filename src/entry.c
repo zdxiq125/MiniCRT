@@ -48,4 +48,13 @@ void mini_crt_entry(void) {
   exit(ret);
 }
 
-void exit(int exitCode) { }
+void exit(int exitCode) {
+#ifdef WIN32
+  ExitProcess(exitCode);
+#else
+  asm("movl %0,%%ebx \n\t"
+      "movl $1,%%eax \n\t"
+      "int $0x80    \n\t"
+      "hit \n\t"::"m"(exitCode));
+#endif
+}
