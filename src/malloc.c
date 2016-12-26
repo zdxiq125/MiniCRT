@@ -23,7 +23,7 @@ void free(void* ptr) {
 
   header->type = HEAP_BLOCK_FREE;
   if(header->prev && header->prev->type == HEAP_BLOCK_FREE) {
-    //if(header->next && head->next->type == HEAP_BLOCK_USED)
+    // merge previous free block
     header->prev->next = header->next;
     header->prev->size += header->size;
     header->next->prev = header->prev;
@@ -31,11 +31,43 @@ void free(void* ptr) {
   }
 
   if(header->next && header->next->type == HEAP_BLOCK_FREE) {
+    // merge next free block
     header->next = header->next->next;
     header->size += header->next->size;
   }
 }
-void* malloc( unsigned size ) { return NULL; }
+
+void* malloc( unsigned size ) {
+  void* ptr = NULL;
+  if(size <= 0)
+    return ptr;
+
+  heap_header* walker = list_head;
+  while(walker != NULL) {
+    if(size + HEADER_SIZE > walker->size) {
+      walker = walker->next;
+      continue;                                                                                 j
+    } else if(size + 2 * HEADER_SIZE >= walker->size) {
+      // allocate whole block
+      walker->type = HEAP_BLOCK_USED;
+      return ADDR_ADD(walker, HEADER_SIZE);
+    } else {
+      // split the block
+      heap_header* next = (heap_header*)ADDR_ADD(walker, HEADER_SIZE + size);
+      next->next = walker->next;
+      next->prev = walker;
+      next->type = HEAP_BLOCK_FREE;
+      next->size = walker->size - (size + HEADER_SIZE);
+      walker->next = next;
+      walker->type = HEAP_BLOCK_USED;
+      walker->size = HEADER_SIZE + size;
+      return ADDR_ADD(walker, HEADER_SIZE);
+    }
+    walker = walker->next;
+  }
+
+  return NULL;
+}
 
 #ifndef WIN32
 static int brk(void* end_data_segment) {
